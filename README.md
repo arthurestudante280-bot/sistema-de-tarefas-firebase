@@ -1,5 +1,10 @@
 # Sistema de Gerenciamento de Tarefas com Firebase
 
+
+## 👤 Autor e Data
+- **Autor:** Arthur de Oliveira
+- **Data de Conclusão:** 29/09/2026
+
 Este projeto foi desenvolvido como atividade prática para o curso "HTML, CSS, JavaScript e Firebase: Seja um FullStack developer".
 
 ## 🚀 Funcionalidades
