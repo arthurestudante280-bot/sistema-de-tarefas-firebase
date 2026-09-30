@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Tarefas - Firebase</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      padding-top: 40px;
+    }
+    .container {
+      background: #fff;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 450px;
+    }
+    h1, h2 { text-align: center; color: #333; }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .buttons { display: flex; gap: 10px; }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0056b3; }
+    #btn-logout { background-color: #dc3545; width: auto; padding: 6px 12px; }
+    .user-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #f9f9f9;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #ddd;
+    }
+    .delete-btn {
+      background-color: #ff4d4d;
+      border: none;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gerenciador de Tarefas</h1>
+
+    <!-- Tela de Autenticação -->
+    <div id="auth-section">
+      <h2>Entrar / Cadastrar</h2>
+      <input type="email" id="email" placeholder="E-mail">
+      <input type="password" id="password" placeholder="Senha (mínimo 6 caracteres)">
+      <div class="buttons">
+        <button type="button" id="btn-login">Entrar</button>
+        <button type="button" id="btn-signup">Cadastrar</button>
+      </div>
+    </div>
+
+    <!-- Tela de Tarefas -->
+    <div id="app-section" style="display: none;">
+      <div class="user-info">
+        <p>Conectado como: <br><strong id="user-email"></strong></p>
+        <button type="button" id="btn-logout">Sair</button>
+      </div>
+
+      <div class="task-input">
+        <input type="text" id="task-text" placeholder="Digite uma nova tarefa...">
+        <button type="button" id="btn-add-task">Adicionar Tarefa</button>
+      </div>
+
+      <ul id="task-list"></ul>
+    </div>
+  </div>
+
+  <!-- Bibliotecas do Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script>
+       const firebaseConfig = {
+      apiKey: "AIzaSyC5-lkMUVLWcqLl7ohaSFLmyMuLNro5oRQ",
+      authDomain: "sistema-de-tarefas-a54dc.firebaseapp.com",
+      projectId: "sistema-de-tarefas-a54dc",
+      storageBucket: "sistema-de-tarefas-a54dc.firebasestorage.app",
+      messagingSenderId: "844651423342",
+      appId: "1:844651423342:web:3d75269748db03607c687f"
+    };
+
+    // Inicialização do Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const authSection = document.getElementById('auth-section');
+    const appSection = document.getElementById('app-section');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const userEmailSpan = document.getElementById('user-email');
+    const taskInput = document.getElementById('task-text');
+    const taskList = document.getElementById('task-list');
+
+    // Monitor do estado da sessão
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        authSection.style.display = 'none';
+        appSection.style.display = 'block';
+        userEmailSpan.textContent = user.email;
+        carregarTarefas(user.uid);
+      } else {
+        authSection.style.display = 'block';
+        appSection.style.display = 'none';
+        taskList.innerHTML = '';
+      }
+    });
+
+    // Botão Cadastrar
+    document.getElementById('btn-signup').addEventListener('click', () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        alert("Preencha o e-mail e a senha!");
+        return;
+      }
+      if (password.length < 6) {
+        alert("A senha deve ter no mínimo 6 caracteres!");
+        return;
+      }
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => alert("Conta criada com sucesso!"))
+        .catch(err => alert("Erro ao cadastrar: " + err.message));
+    });
+
+    // Botão Entrar
+    document.getElementById('btn-login').addEventListener('click', () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(err => alert("Erro ao entrar: " + err.message));
+    });
+
+    // Botão Sair
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      auth.signOut();
+    });
+
+    // Criar Tarefa
+    document.getElementById('btn-add-task').addEventListener('click', () => {
+      const text = taskInput.value.trim();
+      const user = auth.currentUser;
+      if (text && user) {
+        db.collection('tasks').add({
+          text: text,
+          userId: user.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+          taskInput.value = '';
+        });
+      }
+    });
+
+    // Ler Tarefas em tempo real
+    function carregarTarefas(userId) {
+      db.collection('tasks')
+        .where('userId', '==', userId)
+        .onSnapshot(snapshot => {
+          taskList.innerHTML = '';
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <span>${data.text}</span>
+              <button class="delete-btn" onclick="deletarTarefa('${doc.id}')">Excluir</button>
+            `;
+            taskList.appendChild(li);
+          });
+        });
+    }
+
+    // Deletar Tarefa
+    function deletarTarefa(id) {
+      db.collection('tasks').doc(id).delete();
+    }
+  </script>
+</body>
+</html>
